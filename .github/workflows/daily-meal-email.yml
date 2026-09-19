@@ -19,6 +19,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: (임시) secret 값 점검
+        env:
+          NAVER_EMAIL: ${{ secrets.NAVER_EMAIL }}
+          NAVER_PASSWORD: ${{ secrets.NAVER_PASSWORD }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+        run: python debug_secrets.py
+
       - name: 급식 이메일 발송
         env:
           NAVER_EMAIL: ${{ secrets.NAVER_EMAIL }}
