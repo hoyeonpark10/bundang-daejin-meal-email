@@ -4,17 +4,23 @@
 GitHub Actions가 매일 아침 6시(KST)에 이 스크립트를 실행하도록
 .github/workflows/daily-meal-email.yml 에 예약되어 있습니다.
 
+이메일 발송은 Resend(https://resend.com) API를 사용합니다. (Gmail 앱 비밀번호처럼
+구글 계정 보안 정책과 씨름할 필요 없이 API 키 하나로 바로 보낼 수 있습니다.)
+
 필요한 환경변수 (GitHub 저장소 Secrets에 등록):
-- GMAIL_ADDRESS: 발신용 Gmail 주소 (앱 비밀번호를 발급받은 계정)
-- GMAIL_APP_PASSWORD: 위 Gmail 계정의 앱 비밀번호 (일반 로그인 비밀번호 아님)
-- RECIPIENT_EMAIL: 급식 안내를 받을 이메일 주소 (생략하면 GMAIL_ADDRESS로 보냄)
+- RESEND_API_KEY: Resend 대시보드(API Keys 메뉴)에서 발급받은 키
+- RECIPIENT_EMAIL: 급식 안내를 받을 이메일 주소
+  (도메인 인증 없이 쓰는 기본 발신 주소 onboarding@resend.dev는 Resend 가입 시
+  사용한 이메일 주소로만 보낼 수 있습니다. 즉 RECIPIENT_EMAIL은 Resend 가입 이메일과
+  같아야 합니다.)
 """
 
+import json
 import os
-import smtplib
 import sys
+import urllib.error
+import urllib.request
 from datetime import datetime, timedelta, timezone
-from email.mime.text import MIMEText
 
 from bundang_daejin_meal import get_meal_for_date
 
@@ -23,6 +29,9 @@ if hasattr(sys.stdout, "reconfigure"):
 
 KST = timezone(timedelta(hours=9))
 WEEKDAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"]
+
+RESEND_API_URL = "https://api.resend.com/emails"
+SENDER_ADDRESS = "Bundang Daejin Meal <onboarding@resend.dev>"
 
 
 def build_email_body(target_date, meals_of_day):
@@ -47,21 +56,35 @@ def build_email_body(target_date, meals_of_day):
     return "\n".join(lines)
 
 
-def send_email(subject, body, sender_email, app_password, recipient_email):
-    message = MIMEText(body, _charset="utf-8")
-    message["Subject"] = subject
-    message["From"] = sender_email
-    message["To"] = recipient_email
+def send_email(subject, body, api_key, recipient_email):
+    payload = json.dumps({
+        "from": SENDER_ADDRESS,
+        "to": [recipient_email],
+        "subject": subject,
+        "text": body,
+    }).encode("utf-8")
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-        server.login(sender_email, app_password)
-        server.sendmail(sender_email, [recipient_email], message.as_string())
+    request = urllib.request.Request(
+        RESEND_API_URL,
+        data=payload,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(request) as response:
+            print(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as error:
+        error_body = error.read().decode("utf-8")
+        raise RuntimeError(f"이메일 발송 실패 ({error.code}): {error_body}")
 
 
 def main():
-    sender_email = os.environ["GMAIL_ADDRESS"]
-    app_password = os.environ["GMAIL_APP_PASSWORD"]
-    recipient_email = os.environ.get("RECIPIENT_EMAIL", sender_email)
+    api_key = os.environ["RESEND_API_KEY"]
+    recipient_email = os.environ["RECIPIENT_EMAIL"]
 
     today = datetime.now(KST).date()
     meals_of_day = get_meal_for_date(today)
@@ -69,7 +92,7 @@ def main():
     subject = f"[분당대진고] {today.strftime('%Y-%m-%d')} 중식/석식 안내"
     body = build_email_body(today, meals_of_day)
 
-    send_email(subject, body, sender_email, app_password, recipient_email)
+    send_email(subject, body, api_key, recipient_email)
 
     print("이메일 전송 완료:", recipient_email)
     print(body)
