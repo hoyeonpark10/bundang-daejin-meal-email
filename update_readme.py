@@ -9,17 +9,58 @@ import re
 import sys
 from datetime import datetime, timedelta, timezone
 
-from bundang_daejin_meal import get_meal_for_date
+from bundang_daejin_meal import get_full_meal_info_for_date
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
 KST = timezone(timedelta(hours=9))
 WEEKDAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"]
+MEAL_EMOJI = {"조식": "🌅", "중식": "🍱", "석식": "🌙"}
 
 README_PATH = "README.md"
 START_MARKER = "<!-- MEAL:START -->"
 END_MARKER = "<!-- MEAL:END -->"
+
+
+def build_meal_block(meal_name, meal_info):
+    """한 끼(중식/석식)에 대한 마크다운 블록을 만듭니다."""
+    emoji = MEAL_EMOJI.get(meal_name, "🍽️")
+    lines = []
+
+    if meal_info is None:
+        lines.append(f"### {emoji} {meal_name}")
+        lines.append(f"오늘은 {meal_name}을(를) 배식하지 않습니다.")
+        lines.append("")
+        return lines
+
+    dishes = meal_info["dishes"]
+    calorie = meal_info["calorie"]
+    nutrition = meal_info["nutrition"]
+
+    heading = f"### {emoji} {meal_name}"
+    if calorie:
+        heading += f" · {calorie}"
+    lines.append(heading)
+    lines.append("")
+
+    for dish in dishes:
+        lines.append(f"- {dish}")
+    lines.append("")
+
+    if nutrition:
+        lines.append("<details>")
+        lines.append("<summary>영양 정보</summary>")
+        lines.append("")
+        lines.append("| 영양소 | 값 |")
+        lines.append("|---|---|")
+        for key, value in nutrition.items():
+            lines.append(f"| {key} | {value} |")
+        lines.append("")
+        lines.append("</details>")
+        lines.append("")
+
+    return lines
 
 
 def build_meal_section(target_date, meals_of_day):
@@ -28,20 +69,14 @@ def build_meal_section(target_date, meals_of_day):
     date_str = target_date.strftime("%Y-%m-%d")
 
     lines = [START_MARKER, ""]
-    lines.append(f"## {date_str} ({weekday}) 분당대진고등학교 급식")
+    lines.append(f"## 📅 {date_str} ({weekday}) 분당대진고등학교 급식")
     lines.append("")
 
     for meal_name in ["중식", "석식"]:
-        dish_names = meals_of_day.get(meal_name)
-        lines.append(f"### {meal_name}")
-        if dish_names:
-            for dish in dish_names:
-                lines.append(f"- {dish}")
-        else:
-            lines.append(f"오늘은 {meal_name}을(를) 배식하지 않습니다.")
-        lines.append("")
+        lines.extend(build_meal_block(meal_name, meals_of_day.get(meal_name)))
 
     updated_at = datetime.now(KST).strftime("%Y-%m-%d %H:%M")
+    lines.append("---")
     lines.append(f"_마지막 업데이트: {updated_at} (KST)_")
     lines.append("")
     lines.append(END_MARKER)
@@ -67,7 +102,7 @@ def update_readme(new_section):
 
 def main():
     tomorrow = datetime.now(KST).date() + timedelta(days=1)
-    meals_of_day = get_meal_for_date(tomorrow)
+    meals_of_day = get_full_meal_info_for_date(tomorrow)
 
     section = build_meal_section(tomorrow, meals_of_day)
     update_readme(section)
