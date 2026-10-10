@@ -14,6 +14,7 @@
     --border: #e5e7eb;
     --accent: #2563eb;
     --accent-soft: #2563eb1a;
+    --shadow: rgba(0, 0, 0, 0.12);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -24,6 +25,7 @@
       --border: #2a2e37;
       --accent: #60a5fa;
       --accent-soft: #60a5fa26;
+      --shadow: rgba(0, 0, 0, 0.5);
     }
   }
   * { box-sizing: border-box; }
@@ -62,7 +64,7 @@
     margin-bottom: 0.5rem;
   }
   .calendar-grid {
-    margin-bottom: 1.75rem;
+    margin-bottom: 1rem;
   }
   .day-cell {
     aspect-ratio: 1;
@@ -95,7 +97,7 @@
     border-width: 2px;
     font-weight: 600;
   }
-  .day-cell.selected {
+  .day-cell.active {
     background: var(--accent-soft);
     border-color: var(--accent);
   }
@@ -107,21 +109,37 @@
     line-height: 1;
     letter-spacing: -1px;
   }
+  .hint {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.82rem;
+    margin: 0 0 1.5rem;
+  }
 
-  /* 상세 정보 패널 */
-  .detail-card {
+  /* 말풍선(툴팁) */
+  #tooltip {
+    position: fixed;
+    z-index: 20;
+    width: min(300px, 86vw);
+    max-height: 70vh;
+    overflow-y: auto;
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 1.25rem 1.5rem;
+    padding: 1rem 1.1rem;
+    box-shadow: 0 8px 24px var(--shadow);
+    font-size: 0.85rem;
+  }
+  #tooltip[hidden] {
+    display: none;
   }
   .date-badge {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: var(--muted);
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
   }
   .meal-block {
-    margin-bottom: 1.25rem;
+    margin-bottom: 1rem;
   }
   .meal-block:last-child {
     margin-bottom: 0;
@@ -130,11 +148,11 @@
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    font-size: 1.05rem;
-    margin: 0 0 0.6rem;
+    font-size: 0.95rem;
+    margin: 0 0 0.5rem;
   }
   .meal-block .calorie {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: var(--muted);
     font-weight: normal;
   }
@@ -144,7 +162,7 @@
     padding: 0;
   }
   .dish-list li {
-    padding: 0.28rem 0;
+    padding: 0.22rem 0;
     border-bottom: 1px dashed var(--border);
   }
   .dish-list li:last-child {
@@ -152,12 +170,12 @@
   }
   .empty {
     color: var(--muted);
-    font-size: 0.92rem;
+    font-size: 0.88rem;
     margin: 0;
   }
   details {
-    margin-top: 0.6rem;
-    font-size: 0.82rem;
+    margin-top: 0.5rem;
+    font-size: 0.78rem;
     color: var(--muted);
   }
   summary {
@@ -166,15 +184,15 @@
   table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 0.5rem;
-    font-size: 0.82rem;
+    margin-top: 0.4rem;
+    font-size: 0.78rem;
   }
   td {
-    padding: 0.25rem 0.5rem;
+    padding: 0.2rem 0.4rem;
     border-bottom: 1px solid var(--border);
   }
   footer {
-    margin-top: 2rem;
+    margin-top: 1rem;
     font-size: 0.8rem;
     color: var(--muted);
     text-align: center;
@@ -189,10 +207,7 @@
 <body>
 <main>
   <h1>🏫 분당대진고등학교 급식 달력</h1>
-  <p class="subtitle">
-    앞으로 30일치 급식 정보를 매일 밤 22시(KST)에 자동으로 갱신합니다.<br>
-    날짜에 마우스를 올리면 미리보기, 클릭(탭)하면 고정해서 볼 수 있어요.
-  </p>
+  <p class="subtitle">앞으로 30일치 급식 정보를 매일 밤 22시(KST)에 자동으로 갱신합니다.</p>
 
   <div class="weekday-row">
     <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
@@ -200,15 +215,14 @@
   <div id="calendar" class="calendar-grid">
     <p class="empty">달력을 불러오는 중...</p>
   </div>
-
-  <section id="detail" class="detail-card">
-    <p class="empty">날짜를 선택하면 상세 정보가 보입니다.</p>
-  </section>
+  <p class="hint">날짜에 마우스를 올리면(모바일은 탭) 그날 급식이 바로 옆에 떠요.</p>
 
   <footer id="footer">데이터 출처: 나이스(NEIS) 교육정보 개방 포털</footer>
 </main>
+
+<div id="tooltip" hidden></div>
+
 <script>
-const WEEKDAY_KO = ["일", "화", "수", "목", "금", "토", "일"]; // 사용 안 함(참고용)
 const MEAL_ORDER = ["중식", "석식"];
 const MEAL_EMOJI = { "중식": "🍱", "석식": "🌙" };
 
@@ -249,13 +263,7 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function renderDetail(day) {
-  const detail = document.getElementById("detail");
-  if (!day) {
-    detail.innerHTML = '<p class="empty">날짜를 선택하면 상세 정보가 보입니다.</p>';
-    return;
-  }
-
+function buildTooltipHtml(day) {
   const parts = [];
   parts.push('<div class="date-badge">📅 ' + escapeHtml(day.date) + ' (' + escapeHtml(day.weekday) + ')</div>');
 
@@ -292,8 +300,73 @@ function renderDetail(day) {
     );
   }
 
-  detail.innerHTML = parts.join("");
+  return parts.join("");
 }
+
+// ---- 툴팁 표시/위치/숨김 ----
+const tooltipEl = document.getElementById("tooltip");
+let hideTimer = null;
+let activeCell = null;
+
+function cancelHide() {
+  if (hideTimer) {
+    clearTimeout(hideTimer);
+    hideTimer = null;
+  }
+}
+
+function scheduleHide() {
+  cancelHide();
+  hideTimer = setTimeout(function () {
+    tooltipEl.hidden = true;
+    if (activeCell) {
+      activeCell.classList.remove("active");
+      activeCell = null;
+    }
+  }, 180);
+}
+
+function positionTooltip(rect) {
+  const margin = 8;
+  const tw = tooltipEl.offsetWidth;
+  const th = tooltipEl.offsetHeight;
+
+  let left = rect.left;
+  if (left + tw > window.innerWidth - margin) left = window.innerWidth - tw - margin;
+  if (left < margin) left = margin;
+
+  let top = rect.bottom + margin;
+  if (top + th > window.innerHeight - margin) {
+    top = rect.top - th - margin;
+    if (top < margin) top = margin;
+  }
+
+  tooltipEl.style.left = left + "px";
+  tooltipEl.style.top = top + "px";
+}
+
+function showTooltipFor(cell, day) {
+  cancelHide();
+  if (activeCell && activeCell !== cell) activeCell.classList.remove("active");
+  activeCell = cell;
+  cell.classList.add("active");
+
+  tooltipEl.innerHTML = buildTooltipHtml(day);
+  tooltipEl.hidden = false;
+  positionTooltip(cell.getBoundingClientRect());
+}
+
+tooltipEl.addEventListener("mouseenter", cancelHide);
+tooltipEl.addEventListener("mouseleave", scheduleHide);
+
+document.addEventListener("click", function (event) {
+  if (event.target.closest("#tooltip") || event.target.closest(".day-cell")) return;
+  tooltipEl.hidden = true;
+  if (activeCell) {
+    activeCell.classList.remove("active");
+    activeCell = null;
+  }
+});
 
 function renderCalendar(days) {
   const grid = document.getElementById("calendar");
@@ -301,8 +374,6 @@ function renderCalendar(days) {
 
   const firstWeekdayIndex = weekdayIndexFromLabel(days[0].weekday);
   const todayStr = getLocalDateStr(new Date());
-
-  let selectedCell = null;
 
   for (let i = 0; i < firstWeekdayIndex; i++) {
     const blank = document.createElement("div");
@@ -327,13 +398,12 @@ function renderCalendar(days) {
       '<div class="cell-emojis">' + emojis.join(" ") + '</div>';
 
     cell.addEventListener("mouseenter", function () {
-      renderDetail(day);
+      showTooltipFor(cell, day);
     });
-    cell.addEventListener("click", function () {
-      if (selectedCell) selectedCell.classList.remove("selected");
-      cell.classList.add("selected");
-      selectedCell = cell;
-      renderDetail(day);
+    cell.addEventListener("mouseleave", scheduleHide);
+    cell.addEventListener("click", function (event) {
+      event.stopPropagation();
+      showTooltipFor(cell, day);
     });
 
     grid.appendChild(cell);
@@ -347,9 +417,6 @@ async function loadData() {
     const data = await res.json();
 
     renderCalendar(data.days);
-
-    const firstWithData = data.days.find(dayHasData);
-    renderDetail(firstWithData || null);
 
     document.getElementById("footer").textContent =
       "데이터 출처: 나이스(NEIS) 교육정보 개방 포털 · 마지막 생성: " + data.generated_at + " (KST)";
