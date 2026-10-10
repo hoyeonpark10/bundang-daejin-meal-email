@@ -85,10 +85,9 @@
   }
   .day-cell.empty {
     color: var(--muted);
-    opacity: 0.45;
-    cursor: default;
+    opacity: 0.55;
   }
-  .day-cell:not(.empty):not(.blank):hover {
+  .day-cell:not(.blank):hover {
     border-color: var(--accent);
   }
   .day-cell.today {
@@ -327,17 +326,15 @@ function renderCalendar(days) {
       '<div class="cell-date">' + monthNum + '/' + dayNum + '</div>' +
       '<div class="cell-emojis">' + emojis.join(" ") + '</div>';
 
-    if (hasData) {
-      cell.addEventListener("mouseenter", function () {
-        renderDetail(day);
-      });
-      cell.addEventListener("click", function () {
-        if (selectedCell) selectedCell.classList.remove("selected");
-        cell.classList.add("selected");
-        selectedCell = cell;
-        renderDetail(day);
-      });
-    }
+    cell.addEventListener("mouseenter", function () {
+      renderDetail(day);
+    });
+    cell.addEventListener("click", function () {
+      if (selectedCell) selectedCell.classList.remove("selected");
+      cell.classList.add("selected");
+      selectedCell = cell;
+      renderDetail(day);
+    });
 
     grid.appendChild(cell);
   });
