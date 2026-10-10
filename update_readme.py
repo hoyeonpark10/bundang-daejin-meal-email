@@ -18,9 +18,23 @@ KST = timezone(timedelta(hours=9))
 WEEKDAY_NAMES = ["월", "화", "수", "목", "금", "토", "일"]
 MEAL_EMOJI = {"조식": "🌅", "중식": "🍱", "석식": "🌙"}
 
+MEAT_KEYWORDS = [
+    "고기", "돼지", "돈육", "삼겹", "제육", "목살", "항정살",
+    "소고기", "우육", "한우", "차돌", "갈비", "불고기",
+    "닭", "치킨", "삼계", "오리",
+    "햄", "소시지", "베이컨", "스팸",
+    "수육", "보쌈", "탕수육", "장조림", "육전", "미트볼", "함박",
+    "돈가스", "돈까스",
+]
+
 README_PATH = "README.md"
 START_MARKER = "<!-- MEAL:START -->"
 END_MARKER = "<!-- MEAL:END -->"
+
+
+def has_meat(dish_name):
+    """메뉴 이름에 고기 관련 단어가 들어있는지 확인합니다."""
+    return any(keyword in dish_name for keyword in MEAT_KEYWORDS)
 
 
 def build_meal_block(meal_name, meal_info):
@@ -45,7 +59,8 @@ def build_meal_block(meal_name, meal_info):
     lines.append("")
 
     for dish in dishes:
-        lines.append(f"- {dish}")
+        prefix = "🍖 " if has_meat(dish) else ""
+        lines.append(f"- {prefix}{dish}")
     lines.append("")
 
     if nutrition:
