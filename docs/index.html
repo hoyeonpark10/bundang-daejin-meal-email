@@ -156,7 +156,8 @@ function render(data) {
     }
 
     const dishItems = meal.dishes.map(function (d) {
-      const prefix = d.is_meat ? "🍖 " : "";
+      const emojis = d.emojis || [];
+      const prefix = emojis.length ? emojis.join("") + " " : "";
       return "<li>" + prefix + escapeHtml(d.name) + "</li>";
     }).join("");
 

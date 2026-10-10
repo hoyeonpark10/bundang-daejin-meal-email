@@ -12,7 +12,8 @@ import sys
 from datetime import datetime, timedelta
 
 from bundang_daejin_meal import get_full_meal_info_for_date
-from update_readme import KST, WEEKDAY_NAMES, has_meat
+from food_emoji import get_food_emojis
+from update_readme import KST, WEEKDAY_NAMES
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -39,7 +40,7 @@ def build_payload(target_date, meals_of_day):
             "calorie": info["calorie"],
             "nutrition": info["nutrition"],
             "dishes": [
-                {"name": dish, "is_meat": has_meat(dish)}
+                {"name": dish, "emojis": get_food_emojis(dish)}
                 for dish in info["dishes"]
             ],
         }
