@@ -12,6 +12,8 @@
     --text: #1a1a1a;
     --muted: #6b7280;
     --border: #e5e7eb;
+    --accent: #2563eb;
+    --accent-soft: #2563eb1a;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -20,6 +22,8 @@
       --text: #f3f4f6;
       --muted: #9ca3af;
       --border: #2a2e37;
+      --accent: #60a5fa;
+      --accent-soft: #60a5fa26;
     }
   }
   * { box-sizing: border-box; }
@@ -32,7 +36,7 @@
     line-height: 1.6;
   }
   main {
-    max-width: 640px;
+    max-width: 720px;
     margin: 0 auto;
   }
   h1 {
@@ -42,30 +46,96 @@
   .subtitle {
     color: var(--muted);
     font-size: 0.9rem;
-    margin: 0 0 2rem;
+    margin: 0 0 1.5rem;
   }
-  .date-badge {
-    display: inline-block;
-    font-size: 0.95rem;
+
+  /* 달력 */
+  .weekday-row, .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .weekday-row {
+    text-align: center;
+    font-size: 0.78rem;
     color: var(--muted);
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.5rem;
   }
-  .meal-card {
+  .calendar-grid {
+    margin-bottom: 1.75rem;
+  }
+  .day-cell {
+    aspect-ratio: 1;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card-bg);
+    padding: 4px 2px;
+    font-size: 0.7rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .day-cell.blank {
+    visibility: hidden;
+    cursor: default;
+  }
+  .day-cell.empty {
+    color: var(--muted);
+    opacity: 0.45;
+    cursor: default;
+  }
+  .day-cell:not(.empty):not(.blank):hover {
+    border-color: var(--accent);
+  }
+  .day-cell.today {
+    border-color: var(--accent);
+    border-width: 2px;
+    font-weight: 600;
+  }
+  .day-cell.selected {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+  }
+  .cell-date {
+    font-size: 0.72rem;
+  }
+  .cell-emojis {
+    font-size: 0.82rem;
+    line-height: 1;
+    letter-spacing: -1px;
+  }
+
+  /* 상세 정보 패널 */
+  .detail-card {
     background: var(--card-bg);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 1.25rem 1.5rem;
+  }
+  .date-badge {
+    font-size: 0.95rem;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+  .meal-block {
     margin-bottom: 1.25rem;
   }
-  .meal-card h2 {
+  .meal-block:last-child {
+    margin-bottom: 0;
+  }
+  .meal-block h2 {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    font-size: 1.1rem;
-    margin: 0 0 0.75rem;
+    font-size: 1.05rem;
+    margin: 0 0 0.6rem;
   }
-  .meal-card .calorie {
-    font-size: 0.85rem;
+  .meal-block .calorie {
+    font-size: 0.82rem;
     color: var(--muted);
     font-weight: normal;
   }
@@ -75,7 +145,7 @@
     padding: 0;
   }
   .dish-list li {
-    padding: 0.3rem 0;
+    padding: 0.28rem 0;
     border-bottom: 1px dashed var(--border);
   }
   .dish-list li:last-child {
@@ -83,12 +153,12 @@
   }
   .empty {
     color: var(--muted);
-    font-size: 0.95rem;
+    font-size: 0.92rem;
     margin: 0;
   }
   details {
-    margin-top: 0.75rem;
-    font-size: 0.85rem;
+    margin-top: 0.6rem;
+    font-size: 0.82rem;
     color: var(--muted);
   }
   summary {
@@ -98,7 +168,7 @@
     width: 100%;
     border-collapse: collapse;
     margin-top: 0.5rem;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
   }
   td {
     padding: 0.25rem 0.5rem;
@@ -110,47 +180,94 @@
     color: var(--muted);
     text-align: center;
   }
+
+  @media (max-width: 420px) {
+    .day-cell { font-size: 0.62rem; border-radius: 8px; }
+    .cell-emojis { font-size: 0.72rem; }
+  }
 </style>
 </head>
 <body>
 <main>
-  <h1>🏫 분당대진고등학교 급식</h1>
-  <p class="subtitle">매일 밤 22시(KST)에 자동으로 다음날 급식 정보를 갱신합니다.</p>
-  <div id="app">
-    <p class="empty">불러오는 중...</p>
+  <h1>🏫 분당대진고등학교 급식 달력</h1>
+  <p class="subtitle">
+    앞으로 30일치 급식 정보를 매일 밤 22시(KST)에 자동으로 갱신합니다.<br>
+    날짜에 마우스를 올리면 미리보기, 클릭(탭)하면 고정해서 볼 수 있어요.
+  </p>
+
+  <div class="weekday-row">
+    <span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span>
   </div>
-  <footer>데이터 출처: 나이스(NEIS) 교육정보 개방 포털</footer>
+  <div id="calendar" class="calendar-grid">
+    <p class="empty">달력을 불러오는 중...</p>
+  </div>
+
+  <section id="detail" class="detail-card">
+    <p class="empty">날짜를 선택하면 상세 정보가 보입니다.</p>
+  </section>
+
+  <footer id="footer">데이터 출처: 나이스(NEIS) 교육정보 개방 포털</footer>
 </main>
 <script>
+const WEEKDAY_KO = ["일", "화", "수", "목", "금", "토", "일"]; // 사용 안 함(참고용)
 const MEAL_ORDER = ["중식", "석식"];
 const MEAL_EMOJI = { "중식": "🍱", "석식": "🌙" };
 
-async function loadData() {
-  const app = document.getElementById("app");
-  try {
-    const res = await fetch("data.json", { cache: "no-store" });
-    if (!res.ok) throw new Error("데이터를 불러오지 못했습니다.");
-    const data = await res.json();
-    render(data);
-  } catch (err) {
-    app.innerHTML = '<p class="empty">급식 정보를 불러오지 못했습니다. (' + err.message + ')</p>';
-  }
+function getLocalDateStr(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return y + "-" + m + "-" + d;
 }
 
-function render(data) {
-  const app = document.getElementById("app");
-  const parts = [];
+function weekdayIndexFromLabel(label) {
+  // "일,월,화,수,목,금,토" -> 0~6 (일요일을 0으로)
+  const order = ["일", "월", "화", "수", "목", "금", "토"];
+  return order.indexOf(label);
+}
 
-  parts.push('<div class="date-badge">📅 ' + escapeHtml(data.date) + ' (' + escapeHtml(data.weekday) + ')</div>');
+function dayHasData(day) {
+  return !!(day.meals["중식"] || day.meals["석식"]);
+}
+
+function summaryEmojis(day) {
+  const seen = [];
+  for (const mealName of MEAL_ORDER) {
+    const meal = day.meals[mealName];
+    if (!meal) continue;
+    for (const dish of meal.dishes) {
+      for (const e of (dish.emojis || [])) {
+        if (!seen.includes(e)) seen.push(e);
+      }
+    }
+  }
+  return seen.slice(0, 4);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str == null ? "" : String(str);
+  return div.innerHTML;
+}
+
+function renderDetail(day) {
+  const detail = document.getElementById("detail");
+  if (!day) {
+    detail.innerHTML = '<p class="empty">날짜를 선택하면 상세 정보가 보입니다.</p>';
+    return;
+  }
+
+  const parts = [];
+  parts.push('<div class="date-badge">📅 ' + escapeHtml(day.date) + ' (' + escapeHtml(day.weekday) + ')</div>');
 
   for (const mealName of MEAL_ORDER) {
-    const meal = data.meals[mealName];
+    const meal = day.meals[mealName];
     const emoji = MEAL_EMOJI[mealName];
 
     if (!meal) {
       parts.push(
-        '<section class="meal-card"><h2>' + emoji + ' ' + mealName + '</h2>' +
-        '<p class="empty">오늘은 ' + mealName + '을(를) 배식하지 않습니다.</p></section>'
+        '<div class="meal-block"><h2>' + emoji + ' ' + mealName + '</h2>' +
+        '<p class="empty">등록된 급식 정보가 없습니다.</p></div>'
       );
       continue;
     }
@@ -161,31 +278,88 @@ function render(data) {
       return "<li>" + prefix + escapeHtml(d.name) + "</li>";
     }).join("");
 
-    const nutritionEntries = Object.entries(meal.nutrition || {});
-    const nutritionRows = nutritionEntries
+    const nutritionRows = Object.entries(meal.nutrition || {})
       .map(function (entry) {
         return "<tr><td>" + escapeHtml(entry[0]) + "</td><td>" + escapeHtml(entry[1]) + "</td></tr>";
       })
       .join("");
 
     parts.push(
-      '<section class="meal-card">' +
+      '<div class="meal-block">' +
         '<h2>' + emoji + ' ' + mealName + ' <span class="calorie">' + escapeHtml(meal.calorie || "") + '</span></h2>' +
         '<ul class="dish-list">' + dishItems + '</ul>' +
         (nutritionRows ? '<details><summary>영양 정보</summary><table>' + nutritionRows + '</table></details>' : '') +
-      '</section>'
+      '</div>'
     );
   }
 
-  parts.push('<p class="subtitle">마지막 업데이트: ' + escapeHtml(data.updated_at) + ' (KST)</p>');
-
-  app.innerHTML = parts.join("");
+  detail.innerHTML = parts.join("");
 }
 
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str == null ? "" : String(str);
-  return div.innerHTML;
+function renderCalendar(days) {
+  const grid = document.getElementById("calendar");
+  grid.innerHTML = "";
+
+  const firstWeekdayIndex = weekdayIndexFromLabel(days[0].weekday);
+  const todayStr = getLocalDateStr(new Date());
+
+  let selectedCell = null;
+
+  for (let i = 0; i < firstWeekdayIndex; i++) {
+    const blank = document.createElement("div");
+    blank.className = "day-cell blank";
+    grid.appendChild(blank);
+  }
+
+  days.forEach(function (day) {
+    const cell = document.createElement("div");
+    const hasData = dayHasData(day);
+    const classes = ["day-cell"];
+    if (!hasData) classes.push("empty");
+    if (day.date === todayStr) classes.push("today");
+    cell.className = classes.join(" ");
+
+    const dayNum = day.date.split("-")[2];
+    const monthNum = day.date.split("-")[1];
+    const emojis = summaryEmojis(day);
+
+    cell.innerHTML =
+      '<div class="cell-date">' + monthNum + '/' + dayNum + '</div>' +
+      '<div class="cell-emojis">' + emojis.join(" ") + '</div>';
+
+    if (hasData) {
+      cell.addEventListener("mouseenter", function () {
+        renderDetail(day);
+      });
+      cell.addEventListener("click", function () {
+        if (selectedCell) selectedCell.classList.remove("selected");
+        cell.classList.add("selected");
+        selectedCell = cell;
+        renderDetail(day);
+      });
+    }
+
+    grid.appendChild(cell);
+  });
+}
+
+async function loadData() {
+  try {
+    const res = await fetch("data.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("데이터를 불러오지 못했습니다.");
+    const data = await res.json();
+
+    renderCalendar(data.days);
+
+    const firstWithData = data.days.find(dayHasData);
+    renderDetail(firstWithData || null);
+
+    document.getElementById("footer").textContent =
+      "데이터 출처: 나이스(NEIS) 교육정보 개방 포털 · 마지막 생성: " + data.generated_at + " (KST)";
+  } catch (err) {
+    document.getElementById("calendar").innerHTML =
+      '<p class="empty">급식 정보를 불러오지 못했습니다. (' + err.message + ')</p>';
+  }
 }
 
 loadData();
