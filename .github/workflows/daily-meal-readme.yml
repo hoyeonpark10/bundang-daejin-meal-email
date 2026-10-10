@@ -1,4 +1,4 @@
-name: 분당대진고 급식 README 업데이트
+name: 분당대진고 급식 정보 업데이트
 
 on:
   schedule:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  update-readme:
+  update-outputs:
     runs-on: ubuntu-latest
     steps:
       - name: 저장소 체크아웃
@@ -25,8 +25,11 @@ jobs:
       - name: README 급식 정보 업데이트
         run: python update_readme.py
 
+      - name: 웹사이트 데이터(docs/data.json) 업데이트
+        run: python update_site_data.py
+
       - name: 변경사항 커밋 & 푸시
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore: 급식 정보 업데이트"
-          file_pattern: README.md
+          file_pattern: "README.md docs/data.json"

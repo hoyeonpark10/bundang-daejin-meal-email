@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>분당대진고 급식 안내</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafafa;
+    --card-bg: #ffffff;
+    --text: #1a1a1a;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111317;
+      --card-bg: #1b1e24;
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --border: #2a2e37;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2rem 1rem 4rem;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    line-height: 1.6;
+  }
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.5rem;
+    margin: 0 0 0.25rem;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin: 0 0 2rem;
+  }
+  .date-badge {
+    display: inline-block;
+    font-size: 0.95rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
+  .meal-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .meal-card h2 {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: 1.1rem;
+    margin: 0 0 0.75rem;
+  }
+  .meal-card .calorie {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: normal;
+  }
+  .dish-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .dish-list li {
+    padding: 0.3rem 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .dish-list li:last-child {
+    border-bottom: none;
+  }
+  .empty {
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin: 0;
+  }
+  details {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  summary {
+    cursor: pointer;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+  }
+  td {
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  footer {
+    margin-top: 2rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>🏫 분당대진고등학교 급식</h1>
+  <p class="subtitle">매일 밤 22시(KST)에 자동으로 다음날 급식 정보를 갱신합니다.</p>
+  <div id="app">
+    <p class="empty">불러오는 중...</p>
+  </div>
+  <footer>데이터 출처: 나이스(NEIS) 교육정보 개방 포털</footer>
+</main>
+<script>
+const MEAL_ORDER = ["중식", "석식"];
+const MEAL_EMOJI = { "중식": "🍱", "석식": "🌙" };
+
+async function loadData() {
+  const app = document.getElementById("app");
+  try {
+    const res = await fetch("data.json", { cache: "no-store" });
+    if (!res.ok) throw new Error("데이터를 불러오지 못했습니다.");
+    const data = await res.json();
+    render(data);
+  } catch (err) {
+    app.innerHTML = '<p class="empty">급식 정보를 불러오지 못했습니다. (' + err.message + ')</p>';
+  }
+}
+
+function render(data) {
+  const app = document.getElementById("app");
+  const parts = [];
+
+  parts.push('<div class="date-badge">📅 ' + escapeHtml(data.date) + ' (' + escapeHtml(data.weekday) + ')</div>');
+
+  for (const mealName of MEAL_ORDER) {
+    const meal = data.meals[mealName];
+    const emoji = MEAL_EMOJI[mealName];
+
+    if (!meal) {
+      parts.push(
+        '<section class="meal-card"><h2>' + emoji + ' ' + mealName + '</h2>' +
+        '<p class="empty">오늘은 ' + mealName + '을(를) 배식하지 않습니다.</p></section>'
+      );
+      continue;
+    }
+
+    const dishItems = meal.dishes.map(function (d) {
+      const prefix = d.is_meat ? "🍖 " : "";
+      return "<li>" + prefix + escapeHtml(d.name) + "</li>";
+    }).join("");
+
+    const nutritionEntries = Object.entries(meal.nutrition || {});
+    const nutritionRows = nutritionEntries
+      .map(function (entry) {
+        return "<tr><td>" + escapeHtml(entry[0]) + "</td><td>" + escapeHtml(entry[1]) + "</td></tr>";
+      })
+      .join("");
+
+    parts.push(
+      '<section class="meal-card">' +
+        '<h2>' + emoji + ' ' + mealName + ' <span class="calorie">' + escapeHtml(meal.calorie || "") + '</span></h2>' +
+        '<ul class="dish-list">' + dishItems + '</ul>' +
+        (nutritionRows ? '<details><summary>영양 정보</summary><table>' + nutritionRows + '</table></details>' : '') +
+      '</section>'
+    );
+  }
+
+  parts.push('<p class="subtitle">마지막 업데이트: ' + escapeHtml(data.updated_at) + ' (KST)</p>');
+
+  app.innerHTML = parts.join("");
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str == null ? "" : String(str);
+  return div.innerHTML;
+}
+
+loadData();
+</script>
+</body>
+</html>
