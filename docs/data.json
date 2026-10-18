@@ -1,14 +1,6 @@
 {
-  "generated_at": "2026-10-18 01:15",
+  "generated_at": "2026-10-19 01:25",
   "days": [
-    {
-      "date": "2026-10-18",
-      "weekday": "일",
-      "meals": {
-        "중식": null,
-        "석식": null
-      }
-    },
     {
       "date": "2026-10-19",
       "weekday": "월",
@@ -948,6 +940,14 @@
     {
       "date": "2026-11-16",
       "weekday": "월",
+      "meals": {
+        "중식": null,
+        "석식": null
+      }
+    },
+    {
+      "date": "2026-11-17",
+      "weekday": "화",
       "meals": {
         "중식": null,
         "석식": null
